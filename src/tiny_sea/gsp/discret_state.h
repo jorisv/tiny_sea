@@ -17,31 +17,33 @@
 #pragma once
 
 // includes
+// std
+#include <functional>
+#include <tuple>
+
 // tiny_sea
-#include "strong_typedef.h"
+#include <tiny_sea/core/hash_utils.h>
 
 namespace tiny_sea {
 
-struct LatitudeTag
+namespace gsp {
+
+using DiscretState =
+  std::tuple<std::uint64_t, std::int64_t, std::int64_t, std::int64_t>;
+
+/*! Hash fonction for DiscretState
+ */
+struct DiscretStateHash
 {
-    using value_type = double;
+    std::size_t operator()(const DiscretState& d_state) const
+    {
+        return hashCombine(std::hash<std::uint64_t>()(std::get<0>(d_state)),
+                           std::hash<std::int64_t>()(std::get<1>(d_state)),
+                           std::hash<std::int64_t>()(std::get<2>(d_state)),
+                           std::hash<std::int64_t>()(std::get<3>(d_state)));
+    }
 };
-
-using latitude_t = StrongTypedef<LatitudeTag>;
-
-struct LongitudeTag
-{
-    using value_type = double;
-};
-
-using longitude_t = StrongTypedef<LongitudeTag>;
-
-struct MeterTag
-{
-    using value_type = double;
-};
-
-using meter_t = StrongTypedef<MeterTag>;
 
 }
 
+}
