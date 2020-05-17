@@ -22,12 +22,15 @@
 #include <memory>
 
 // tiny_sea
+#include <tiny_sea/gsp/binary_heap_nu_open_list.h>
+#include <tiny_sea/gsp/binary_heap_open_list.h>
 #include <tiny_sea/gsp/open_list.h>
 #include <tiny_sea/gsp/state_factory.h>
 
 using namespace tiny_sea;
 using namespace tiny_sea::gsp;
 
+template<typename OpenListType>
 class OpenListFixture : public ::testing::Test
 {
 protected:
@@ -41,88 +44,97 @@ protected:
     }
 
     std::unique_ptr<StateFactory> m_factory;
+    OpenListType m_openList;
 };
 
-TEST_F(OpenListFixture, TEST_insert)
-{
-    auto state1 =
-      m_factory->build(NVector(Eigen::Vector3d(10, 200, 300).normalized()),
-                       std::chrono::minutes(45));
-    auto state2 =
-      m_factory->build(NVector(Eigen::Vector3d(20, 220, 330).normalized()),
-                       std::chrono::minutes(39));
-    auto state3 =
-      m_factory->build(NVector(Eigen::Vector3d(110, 300, 400).normalized()),
-                       std::chrono::minutes(45));
+using OpenListTypes =
+  ::testing::Types<OpenList, BinaryHeapNUOpenList, BinaryHeapOpenList>;
+TYPED_TEST_SUITE(OpenListFixture, OpenListTypes);
 
-    OpenList openList;
+TYPED_TEST(OpenListFixture, TEST_insert)
+{
+    auto state1 = this->m_factory->build(
+      NVector(Eigen::Vector3d(10, 200, 300).normalized()),
+      std::chrono::minutes(45));
+    auto state2 = this->m_factory->build(
+      NVector(Eigen::Vector3d(20, 220, 330).normalized()),
+      std::chrono::minutes(39));
+    auto state3 = this->m_factory->build(
+      NVector(Eigen::Vector3d(110, 300, 400).normalized()),
+      std::chrono::minutes(45));
+
     // Insert success
-    auto it1 = openList.insert(state1);
+    auto it1 = this->m_openList.insert(state1);
     EXPECT_TRUE(it1.second);
-    EXPECT_EQ(*it1.first, state1);
+    if constexpr (TypeParam::isUpdate) {
+        EXPECT_EQ(*it1.first, state1);
+    }
 
     // Insert fail (state1 and state2 are have the same DiscretState)
-    auto it2 = openList.insert(state2);
-    EXPECT_FALSE(it2.second);
-    EXPECT_EQ(*it2.first, state1);
+    auto it2 = this->m_openList.insert(state2);
+    if constexpr (TypeParam::isUpdate) {
+        EXPECT_FALSE(it2.second);
+        EXPECT_EQ(*it2.first, state1);
+    } else {
+        EXPECT_TRUE(it2.second);
+    }
 
     // Insert success
-    auto it3 = openList.insert(state3);
+    auto it3 = this->m_openList.insert(state3);
     EXPECT_TRUE(it3.second);
-    EXPECT_EQ(*it3.first, state3);
+    if constexpr (TypeParam::isUpdate) {
+        EXPECT_EQ(*it3.first, state3);
+    }
 }
 
-TEST_F(OpenListFixture, TEST_empty)
+TYPED_TEST(OpenListFixture, TEST_empty)
 {
-    OpenList openList;
-    EXPECT_TRUE(openList.empty());
+    EXPECT_TRUE(this->m_openList.empty());
 
-    auto state =
-      m_factory->build(NVector(Eigen::Vector3d(10, 200, 300).normalized()),
-                       std::chrono::minutes(45));
-    openList.insert(state);
-    EXPECT_FALSE(openList.empty());
+    auto state = this->m_factory->build(
+      NVector(Eigen::Vector3d(10, 200, 300).normalized()),
+      std::chrono::minutes(45));
+    this->m_openList.insert(state);
+    EXPECT_FALSE(this->m_openList.empty());
 }
 
-TEST_F(OpenListFixture, TEST_pop)
+TYPED_TEST(OpenListFixture, TEST_pop)
 {
-    auto state1 =
-      m_factory->build(NVector(Eigen::Vector3d(10, 200, 300).normalized()),
-                       std::chrono::minutes(45),
-                       DiscretState());
-    auto state2 =
-      m_factory->build(NVector(Eigen::Vector3d(110, 300, 400).normalized()),
-                       std::chrono::minutes(45),
-                       DiscretState());
+    auto state1 = this->m_factory->build(
+      NVector(Eigen::Vector3d(10, 200, 300).normalized()),
+      std::chrono::minutes(45),
+      DiscretState());
+    auto state2 = this->m_factory->build(
+      NVector(Eigen::Vector3d(110, 300, 400).normalized()),
+      std::chrono::minutes(45),
+      DiscretState());
 
-    std::vector<State> states({ state1, state2 });
-    OpenList openList(states.begin(), states.end());
+    this->m_openList.insert(state1);
+    this->m_openList.insert(state2);
 
     // Best state is state 2
-    EXPECT_EQ(openList.pop(), state2);
-    EXPECT_FALSE(openList.empty());
+    EXPECT_EQ(this->m_openList.pop(), state2);
+    EXPECT_FALSE(this->m_openList.empty());
 
     // Best state is state 1
-    EXPECT_EQ(openList.pop(), state1);
-    EXPECT_TRUE(openList.empty());
+    EXPECT_EQ(this->m_openList.pop(), state1);
+    EXPECT_TRUE(this->m_openList.empty());
 }
 
-TEST_F(OpenListFixture, TEST_update)
+TYPED_TEST(OpenListFixture, TEST_update)
 {
-    auto state1 =
-      m_factory->build(NVector(Eigen::Vector3d(10, 200, 300).normalized()),
-                       std::chrono::minutes(45),
-                       DiscretState());
-    auto state2 =
-      m_factory->build(NVector(Eigen::Vector3d(20, 210, 310).normalized()),
-                       std::chrono::minutes(45),
-                       DiscretState());
+    if constexpr (TypeParam::isUpdate) {
+        auto state1 = this->m_factory->build(
+          NVector(Eigen::Vector3d(10, 200, 300).normalized()),
+          std::chrono::minutes(45));
+        auto state2 = this->m_factory->build(
+          NVector(Eigen::Vector3d(20, 210, 310).normalized()),
+          std::chrono::minutes(45));
 
-    OpenList openList;
+        auto it = this->m_openList.insert(state1);
+        this->m_openList.update(it.first, state2);
 
-    auto it = openList.insert(state1);
-    openList.update(it.first, state2);
-
-    // Check state1 is replaced by state2
-    EXPECT_EQ(openList.pop(), state2);
+        // Check state1 is replaced by state2
+        EXPECT_EQ(this->m_openList.pop(), state2);
+    }
 }

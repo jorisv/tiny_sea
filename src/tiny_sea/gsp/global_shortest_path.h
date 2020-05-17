@@ -51,10 +51,12 @@ struct Result
  * \code{.cpp}
  * struct OpenList
  * {
+ *   static bool isUpdate;
+ *
  *   bool empty() const;
  *   State pop();
  *   std::pair<iterator, bool> insert(State);
- *   void update(iterator, State);
+ *   void update(iterator, State); [optional]
  * };
  * \code
  *
@@ -63,7 +65,7 @@ struct Result
  * struct CloseList
  * {
  *   bool contains(State) const;
- *   iterator insert(State);
+ *   std::pair<iterator, bool> insert(State);
  * };
  * \code
  *
@@ -78,7 +80,10 @@ struct Result
 template<typename State,
          typename OpenList,
          typename CloseList,
-         typename NeighborsFinder>
+         typename NeighborsFinder,
+         std::enable_if_t<
+           std::remove_cv_t<std::remove_reference_t<OpenList>>::isUpdate,
+           int> = 0>
 std::optional<Result<std::remove_cv_t<std::remove_reference_t<State>>>>
 findGlobalShortestPath(State&& finalState,
                        OpenList&& openList,
@@ -92,13 +97,13 @@ findGlobalShortestPath(State&& finalState,
         auto best = closeList.insert(openList.pop());
 
         // Quit on a success on final state
-        if (best->same(finalState)) {
-            return Result<state_type>(*best);
+        if (best.first->same(finalState)) {
+            return Result<state_type>(*(best.first));
         }
 
         // Find neighbors and add it to the open list
         neighbors.clear();
-        neighborsFinder.search(best, neighbors);
+        neighborsFinder.search(best.first, neighbors);
         for (const state_type& s : neighbors) {
             if (!closeList.contains(s)) {
                 auto is_insert = openList.insert(s);
@@ -107,6 +112,50 @@ findGlobalShortestPath(State&& finalState,
                 // update the open list
                 if (!is_insert.second && s.better(*is_insert.first)) {
                     openList.update(is_insert.first, s);
+                }
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+/*! Same function as \see findGlobalShortestPath but without OpenList::update
+ * method.
+ */
+template<typename State,
+         typename OpenList,
+         typename CloseList,
+         typename NeighborsFinder,
+         std::enable_if_t<
+           !std::remove_cv_t<std::remove_reference_t<OpenList>>::isUpdate,
+           int> = 0>
+std::optional<Result<std::remove_cv_t<std::remove_reference_t<State>>>>
+findGlobalShortestPath(State&& finalState,
+                       OpenList&& openList,
+                       CloseList&& closeList,
+                       NeighborsFinder&& neighborsFinder)
+{
+    using state_type = std::remove_cv_t<std::remove_reference_t<State>>;
+    std::vector<state_type> neighbors;
+
+    while (!openList.empty()) {
+        auto best = closeList.insert(openList.pop());
+
+        // If best state is not already inside the close list we proceed it
+        if (best.second) {
+            // Quit on a success on final state
+            if (best.first->same(finalState)) {
+                return Result<state_type>(*(best.first));
+            }
+
+            // Find neighbors and add it to the open list
+            neighbors.clear();
+            neighborsFinder.search(best.first, neighbors);
+            for (const state_type& s : neighbors) {
+                if (!closeList.contains(s)) {
+                    // Insert without checking if there is a better solution in
+                    // the open list
+                    openList.insert(s);
                 }
             }
         }

@@ -36,6 +36,11 @@ namespace gsp {
 class OpenList
 {
 public:
+    /*! update method is defined.
+     * insert method must return valid iterator.
+     */
+    static constexpr bool isUpdate = true;
+
     using container_t =
       std::unordered_map<DiscretState, State, DiscretStateHash>;
 
@@ -120,7 +125,7 @@ public:
 
     std::size_t nrUpdate() const { return m_nrUpdate; }
 
-    const container_t store() const { return m_store; }
+    const container_t& store() const { return m_store; }
 
 private:
     container_t m_store;

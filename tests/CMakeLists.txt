@@ -6,3 +6,6 @@ target_link_libraries(tiny_sea_test tiny_sea CONAN_PKG::gtest)
 add_test(NAME tiny_sea_test_unit
          WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
          COMMAND tiny_sea_test)
+
+add_executable(tiny_sea_open_list_benchmark BENCH_open_list.cpp)
+target_link_libraries(tiny_sea_open_list_benchmark tiny_sea CONAN_PKG::gtest)
