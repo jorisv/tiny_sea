@@ -51,7 +51,10 @@ TEST_F(CloseListFixture, TEST_insert_contains1)
 
     CloseList closeList;
     EXPECT_FALSE(closeList.contains(state));
-    EXPECT_EQ(*closeList.insert(state), state);
+
+    auto res = closeList.insert(state);
+    EXPECT_TRUE(res.second);
+    EXPECT_EQ(*(res.first), state);
     EXPECT_TRUE(closeList.contains(state));
 }
 
@@ -74,10 +77,13 @@ TEST_F(CloseListFixture, TEST_insert_contains2)
     EXPECT_TRUE(closeList.contains(state2));
     EXPECT_FALSE(closeList.contains(state3));
 
-    auto insert_res = closeList.insert(state2);
-    EXPECT_EQ(insert_res->position(), state1.position());
-    EXPECT_NE(insert_res->position(), state2.position());
+    auto insert_res1 = closeList.insert(state2);
+    EXPECT_FALSE(insert_res1.second);
+    EXPECT_EQ(insert_res1.first->position(), state1.position());
+    EXPECT_NE(insert_res1.first->position(), state2.position());
 
-    EXPECT_EQ(*closeList.insert(state3), state3);
+    auto insert_res2 = closeList.insert(state3);
+    EXPECT_TRUE(insert_res2.second);
+    EXPECT_EQ(*(insert_res2.first), state3);
     EXPECT_TRUE(closeList.contains(state3));
 }

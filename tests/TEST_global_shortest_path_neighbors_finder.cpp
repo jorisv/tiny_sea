@@ -122,7 +122,7 @@ TEST_F(NeighborsFinderFixture, TEST_search1)
       m_closeList.insert(m_factory->build(m_start, std::chrono::hours(3)));
 
     std::vector<State> res;
-    m_neighborsFinder->search(it, res);
+    m_neighborsFinder->search(it.first, res);
     EXPECT_TRUE(res.empty());
 }
 
@@ -135,14 +135,14 @@ TEST_F(NeighborsFinderFixture, TEST_search2)
       m_closeList.insert(m_factory->build(m_start, std::chrono::hours(0)));
 
     std::vector<State> res;
-    m_neighborsFinder->search(it, res);
+    m_neighborsFinder->search(it.first, res);
     ASSERT_EQ(res.size(), 1);
-    EXPECT_EQ(res[0].position(), it->position());
+    EXPECT_EQ(res[0].position(), it.first->position());
     EXPECT_EQ(res[0].time(), fromChrono(std::chrono::hours(1)));
     EXPECT_EQ(res[0].g(),
-              it->g() + cost_t(fromChrono(std::chrono::hours(1)).t));
-    EXPECT_EQ(res[0].h(), it->h());
-    EXPECT_EQ(res[0].parentState(), it->discretState());
+              it.first->g() + cost_t(fromChrono(std::chrono::hours(1)).t));
+    EXPECT_EQ(res[0].h(), it.first->h());
+    EXPECT_EQ(res[0].parentState(), it.first->discretState());
 }
 
 /*! Expand a state with wind
@@ -154,31 +154,31 @@ TEST_F(NeighborsFinderFixture, TEST_search3)
       m_closeList.insert(m_factory->build(m_start, std::chrono::hours(1)));
 
     std::vector<State> res;
-    m_neighborsFinder->search(it, res);
+    m_neighborsFinder->search(it.first, res);
     ASSERT_EQ(res.size(), 3);
 
     // Test static position
-    EXPECT_EQ(res[0].position(), it->position());
+    EXPECT_EQ(res[0].position(), it.first->position());
     EXPECT_EQ(res[0].time(), fromChrono(std::chrono::hours(2)));
     EXPECT_EQ(res[0].g(),
-              it->g() + cost_t(fromChrono(std::chrono::hours(1)).t));
-    EXPECT_EQ(res[0].parentState(), it->discretState());
+              it.first->g() + cost_t(fromChrono(std::chrono::hours(1)).t));
+    EXPECT_EQ(res[0].parentState(), it.first->discretState());
 
     // Test first position
-    NVector pos1(it->position()
+    NVector pos1(it.first->position()
                    .destination(radian_t((PI / 4.) + PI), m_distance)
                    .toEigen());
     EXPECT_EQ(res[1].position(), pos1);
-    EXPECT_EQ(res[1].time(), it->time() + (m_distance / m_velocity));
-    EXPECT_EQ(res[1].parentState(), it->discretState());
+    EXPECT_EQ(res[1].time(), it.first->time() + (m_distance / m_velocity));
+    EXPECT_EQ(res[1].parentState(), it.first->discretState());
 
     // Test second position
-    NVector pos2(it->position()
+    NVector pos2(it.first->position()
                    .destination(radian_t((-PI / 4.) + PI), m_distance)
                    .toEigen());
     EXPECT_EQ(res[2].position(), pos2);
-    EXPECT_EQ(res[2].time(), it->time() + (m_distance / m_velocity));
-    EXPECT_EQ(res[2].parentState(), it->discretState());
+    EXPECT_EQ(res[2].time(), it.first->time() + (m_distance / m_velocity));
+    EXPECT_EQ(res[2].parentState(), it.first->discretState());
 }
 
 /*! Expand a state with too much wind
@@ -190,12 +190,12 @@ TEST_F(NeighborsFinderFixture, TEST_search4)
       m_closeList.insert(m_factory->build(m_start, std::chrono::hours(2)));
 
     std::vector<State> res;
-    m_neighborsFinder->search(it, res);
+    m_neighborsFinder->search(it.first, res);
     ASSERT_EQ(res.size(), 1);
-    EXPECT_EQ(res[0].position(), it->position());
+    EXPECT_EQ(res[0].position(), it.first->position());
     EXPECT_EQ(res[0].time(), fromChrono(std::chrono::hours(3)));
     EXPECT_EQ(res[0].g(),
-              it->g() + cost_t(fromChrono(std::chrono::hours(1)).t));
-    EXPECT_EQ(res[0].h(), it->h());
-    EXPECT_EQ(res[0].parentState(), it->discretState());
+              it.first->g() + cost_t(fromChrono(std::chrono::hours(1)).t));
+    EXPECT_EQ(res[0].h(), it.first->h());
+    EXPECT_EQ(res[0].parentState(), it.first->discretState());
 }

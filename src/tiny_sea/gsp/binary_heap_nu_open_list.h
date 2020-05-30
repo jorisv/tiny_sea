@@ -17,25 +17,27 @@
 #pragma once
 
 // includes
-// std
-#include <type_traits>
-#include <unordered_map>
-
 // tiny_sea
+#include <tiny_sea/gsp/binary_heap.h>
 #include <tiny_sea/gsp/state.h>
 
 namespace tiny_sea {
 
 namespace gsp {
 
-/*! Close list implementation for State.
- * This implementation use an hash map with DiscretState as key.
+/*! Open list implementation for State.
+ * This implementation use a binary heap to store state.
+ * update method is not implemented.
  */
-class CloseList
+class BinaryHeapNUOpenList
 {
 public:
-    using container_t =
-      std::unordered_map<DiscretState, State, DiscretStateHash>;
+    /*! update method is not defined.
+     * insert method return no valid iterator.
+     */
+    static constexpr bool isUpdate = false;
+
+    using container_t = BinaryHeap<State, StateComparator>;
 
     class Iterator
     {
@@ -47,35 +49,13 @@ public:
         using reference = State&;
 
     public:
-        Iterator(container_t::iterator it)
-          : m_it(it)
-        {}
-
-        reference operator*() { return m_it->second; }
-        pointer operator->() { return &(m_it->second); }
-        Iterator& operator++()
-        {
-            ++m_it;
-            return *this;
-        }
-
-        Iterator operator++(int)
-        {
-            Iterator tmp(*this);
-            ++m_it;
-            return tmp;
-        }
-        bool operator==(const Iterator& o) const { return m_it == o.m_it; }
-        bool operator!=(const Iterator& o) const { return m_it != o.m_it; }
-
-    private:
-        container_t::iterator m_it;
+        Iterator() = default;
     };
 
     using iterator = Iterator;
 
 public:
-    CloseList() = default;
+    BinaryHeapNUOpenList() = default;
 
     /*! Constructor from a list of State.
      * \tparam It Must be an iterator to State
@@ -83,25 +63,29 @@ public:
     template<
       typename It,
       std::enable_if_t<std::is_same_v<typename It::value_type, State>, int> = 0>
-    CloseList(It begin, It end)
+    BinaryHeapNUOpenList(It begin, It end)
     {
         for (; begin != end; ++begin) {
-            m_store.emplace(begin->discretState(), *begin);
+            m_store.push(*begin);
         }
     }
 
-    bool contains(const State& state) const
+    bool empty() const { return m_store.empty(); }
+
+    State pop()
     {
-        return m_store.find(state.discretState()) != m_store.end();
+        State ret = m_store.top();
+        m_store.pop();
+        return ret;
     }
 
     std::pair<iterator, bool> insert(const State& state)
     {
-        auto res = m_store.emplace(state.discretState(), state);
-        return std::make_pair(iterator(res.first), res.second);
+        m_store.push(state);
+        return std::make_pair(iterator(), true);
     }
 
-    const container_t store() const { return m_store; }
+    const container_t& store() const { return m_store; }
 
 private:
     container_t m_store;
@@ -110,3 +94,4 @@ private:
 }
 
 }
+
