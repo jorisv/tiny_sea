@@ -18,11 +18,11 @@
 
 // includes
 // std
-#include <algorithm>
-#include <type_traits>
+#include <memory>
 #include <unordered_map>
 
 // tiny_sea
+#include <tiny_sea/gsp/binary_heap.h>
 #include <tiny_sea/gsp/state.h>
 
 namespace tiny_sea {
@@ -30,10 +30,12 @@ namespace tiny_sea {
 namespace gsp {
 
 /*! Open list implementation for State.
- * This implementation use an hash map with DiscretState as key and
- * is really ineffective.
+ * This implementation store state in an unordered dict and
+ * sort them with a binary heap.
+ * The synchronisation of both data structure is made with the binary heap
+ * observer.
  */
-class OpenList
+class BinaryHeapOpenList
 {
 public:
     /*! update method is defined.
@@ -41,8 +43,51 @@ public:
      */
     static constexpr bool isUpdate = true;
 
-    using container_t =
-      std::unordered_map<DiscretState, State, DiscretStateHash>;
+    struct DualState
+    {
+        DualState(const State& p_state, std::size_t p_index)
+          : state(p_state)
+          , binaryHeapIndex(p_index)
+        {}
+
+        State state;
+        std::size_t binaryHeapIndex;
+    };
+
+    using container_t = std::
+      unordered_map<DiscretState, std::unique_ptr<DualState>, DiscretStateHash>;
+
+    struct BinaryHeapComparator
+    {
+        bool operator()(const DualState* s1, const DualState* s2) const
+        {
+            return s1->state.better(s2->state);
+        }
+    };
+    struct BinaryHeapObserver
+    {
+        using heap_container_t = std::vector<DualState*>;
+
+        BinaryHeapObserver() = default;
+        BinaryHeapObserver(const heap_container_t* p_heap)
+          : heap(p_heap)
+        {}
+
+        void beforeErase(std::size_t /* index */) {}
+        void afterEmplace(std::size_t index)
+        {
+            (*heap)[index]->binaryHeapIndex = index;
+        }
+        void beforeSwap(std::size_t index1, std::size_t index2)
+        {
+            (*heap)[index1]->binaryHeapIndex = index2;
+            (*heap)[index2]->binaryHeapIndex = index1;
+        }
+
+        const heap_container_t* heap;
+    };
+    using binary_heap_t =
+      BinaryHeap<DualState*, BinaryHeapComparator, BinaryHeapObserver>;
 
     class Iterator
     {
@@ -58,8 +103,8 @@ public:
           : m_it(it)
         {}
 
-        reference operator*() { return m_it->second; }
-        pointer operator->() { return &(m_it->second); }
+        reference operator*() { return m_it->second->state; }
+        pointer operator->() { return &(m_it->second->state); }
         Iterator& operator++()
         {
             ++m_it;
@@ -75,14 +120,24 @@ public:
         bool operator==(const Iterator& o) const { return m_it == o.m_it; }
         bool operator!=(const Iterator& o) const { return m_it != o.m_it; }
 
-    private:
+        std::size_t binaryHeapIndex() const
+        {
+            return m_it->second->binaryHeapIndex;
+        }
+
+    public:
         container_t::iterator m_it;
     };
 
     using iterator = Iterator;
 
 public:
-    OpenList() = default;
+    BinaryHeapOpenList()
+    {
+        m_heap.observer(BinaryHeapObserver(&m_heap.container()));
+    }
+    BinaryHeapOpenList(const BinaryHeapOpenList&) = delete;
+    BinaryHeapOpenList& operator=(const BinaryHeapOpenList&) = delete;
 
     /*! Constructor from a list of State.
      * \tparam It Must be an iterator to State
@@ -90,10 +145,11 @@ public:
     template<
       typename It,
       std::enable_if_t<std::is_same_v<typename It::value_type, State>, int> = 0>
-    OpenList(It begin, It end)
+    BinaryHeapOpenList(It begin, It end)
     {
+        m_heap.observer(BinaryHeapObserver(&m_heap.container()));
         for (; begin != end; ++begin) {
-            m_store.emplace(begin->discretState(), *begin);
+            insert(*begin);
         }
     }
 
@@ -101,25 +157,27 @@ public:
 
     State pop()
     {
-        auto min_func = [](const container_t::value_type& v1,
-                           const container_t::value_type& v2) {
-            return v1.second.better(v2.second);
-        };
-        auto it = std::min_element(m_store.begin(), m_store.end(), min_func);
-        State ret = it->second;
-        m_store.erase(it);
+        DualState* dState = m_heap.top();
+        State ret = dState->state;
+        m_heap.pop();
+        m_store.erase(ret.discretState());
         return ret;
     }
 
     std::pair<iterator, bool> insert(const State& state)
     {
-        auto res = m_store.emplace(state.discretState(), state);
+        auto res = m_store.emplace(state.discretState(),
+                                   std::make_unique<DualState>(state, 0));
+        if (res.second) {
+            m_heap.push(res.first->second.get());
+        }
         return std::make_pair(iterator(res.first), res.second);
     }
 
     void update(iterator it, const State& state)
     {
         *it = state;
+        m_heap.decrease(it.binaryHeapIndex());
         ++m_nrUpdate;
     }
 
@@ -129,6 +187,7 @@ public:
 
 private:
     container_t m_store;
+    binary_heap_t m_heap;
     std::size_t m_nrUpdate = 0;
 };
 

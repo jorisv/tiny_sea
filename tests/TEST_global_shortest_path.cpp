@@ -18,6 +18,7 @@
 // std
 #include <algorithm>
 #include <optional>
+#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -83,6 +84,14 @@ struct State
     std::optional<StatePosition> parent_position;
 };
 
+struct StateCompare : public std::greater<State>
+{
+    bool operator()(const State& s1, const State& s2) const
+    {
+        return s2.better(s1);
+    }
+};
+
 using StateContainer = std::unordered_map<std::uint64_t, State>;
 class StateContainerIterator
 {
@@ -128,6 +137,9 @@ private:
 class OpenList
 {
 public:
+    static constexpr bool isUpdate = true;
+
+public:
     bool empty() const { return m_store.empty(); }
 
     State pop()
@@ -166,6 +178,43 @@ private:
     std::uint32_t m_nr_update = 0;
 };
 
+class NUOpenList
+{
+public:
+    static constexpr bool isUpdate = false;
+
+public:
+    using container_type =
+      std::priority_queue<State, std::vector<State>, StateCompare>;
+    class Iterator
+    {};
+
+public:
+    bool empty() const { return m_store.empty(); }
+
+    State pop()
+    {
+        State ret = m_store.top();
+        m_store.pop();
+        return ret;
+    }
+
+    std::pair<Iterator, bool> insert(const State& s)
+    {
+        ++m_nr_insert;
+        m_store.push(s);
+        return std::make_pair(Iterator(), true);
+    }
+
+    const container_type& container() const { return m_store; }
+
+    std::uint32_t nrInsert() const { return m_nr_insert; }
+
+private:
+    container_type m_store;
+    std::uint32_t m_nr_insert = 0;
+};
+
 class CloseList
 {
 public:
@@ -174,11 +223,11 @@ public:
         return m_store.find(s.hash()) != m_store.end();
     }
 
-    StateContainerIterator insert(const State& s)
+    std::pair<StateContainerIterator, bool> insert(const State& s)
     {
         ++m_nr_insert;
         const auto& pair = m_store.emplace(s.hash(), s);
-        return StateContainerIterator(pair.first);
+        return std::make_pair(StateContainerIterator(pair.first), pair.second);
     }
 
     const StateContainer& container() const { return m_store; }
@@ -265,6 +314,42 @@ TEST(GLOBAL_SHORTEST_PATH_TESTS, TEST_short1)
     EXPECT_EQ(openList.nrUpdate(), 0);
 }
 
+/*! No update version
+ * Test that we find a solution on a simple 3x3 grid
+ *   | | |g|
+ *   | | | |
+ *   |s| | |
+ *
+ *   Result should be
+ *
+ *   |c(2)|c(3)|c(4)|
+ *   |c(1)|c(2)|c(3)|
+ *   |c(0)|c(1)|c(2)|
+ */
+TEST(GLOBAL_SHORTEST_PATH_TESTS, TEST_short_nu_1)
+{
+    // Init the open list with the start position
+    NUOpenList openList;
+    openList.insert(State(StatePosition(0, 0), 0));
+    // Create close list
+    CloseList closeList;
+
+    // Create neighbors finder with a 3x3 grid and no obstacle
+    NeighborsFinder neighbor(3, 3, {});
+
+    auto res = findGlobalShortestPath(
+      State(StatePosition(2, 2), 0), openList, closeList, neighbor);
+
+    EXPECT_TRUE(res);
+
+    EXPECT_EQ(closeList.container().size(), 9);
+    // 3 insert of state already in the list (1,1), (1,2) and (2,1)
+    EXPECT_EQ(closeList.nrInsert(), 9 + 3);
+    // (2,2)
+    EXPECT_EQ(openList.container().size(), 1);
+    EXPECT_EQ(openList.nrInsert(), 12 + 1); // 1 initial insert
+}
+
 /*! Test that we find a solution on a 3x3 grid with 3 obstacles
  *   | | |g|
  *   |X|X| |
@@ -296,6 +381,39 @@ TEST(GLOBAL_SHORTEST_PATH_TESTS, TEST_short2)
     EXPECT_EQ(openList.container().size(), 0);
     EXPECT_EQ(openList.nrInsert(), 4 + 1); // 1 initial insert
     EXPECT_EQ(openList.nrUpdate(), 0);
+}
+
+/*! No update version
+ * Test that we find a solution on a 3x3 grid with 3 obstacles
+ *   | | |g|
+ *   |X|X| |
+ *   |s| | |
+ *
+ *   Result should be
+ *
+ *   |    |    |c(4)|
+ *   |    |    |c(3)|
+ *   |c(0)|c(1)|c(2)|
+ */
+TEST(GLOBAL_SHORTEST_PATH_TESTS, TEST_short_nu_2)
+{
+    // Init the open list with the start position
+    NUOpenList openList;
+    openList.insert(State(StatePosition(0, 0), 0));
+    // Create close list
+    CloseList closeList;
+
+    // Create neighbors finder with a 3x3 grid and 2 obstacles
+    NeighborsFinder neighbor(
+      3, 3, { StatePosition(0, 1), StatePosition(1, 1) });
+
+    findGlobalShortestPath(
+      State(StatePosition(2, 2), 0), openList, closeList, neighbor);
+
+    EXPECT_EQ(closeList.container().size(), 5);
+    EXPECT_EQ(closeList.nrInsert(), 5);
+    EXPECT_EQ(openList.container().size(), 0);
+    EXPECT_EQ(openList.nrInsert(), 4 + 1); // 1 initial insert
 }
 
 /*! Test that we find a solution on a 3x3 grid with 2 start point
@@ -333,4 +451,40 @@ TEST(GLOBAL_SHORTEST_PATH_TESTS, TEST_short3)
     EXPECT_EQ(openList.container().size(), 0);
     EXPECT_EQ(openList.nrInsert(), 12 + 2); // 2 initial insert
     EXPECT_EQ(openList.nrUpdate(), 1);
+}
+
+/*! No update version
+ * Test that we find a solution on a 3x3 grid with 2 start point
+ *   |s(4)| |g|
+ *   |    | | |
+ *   |s(0)| | |
+ *
+ *   Result should be
+ *
+ *   |c(2)|c(3)|c(4)|
+ *   |c(1)|c(2)|c(3)|
+ *   |c(0)|c(1)|c(2)|
+ */
+TEST(GLOBAL_SHORTEST_PATH_TESTS, TEST_short_nu_3)
+{
+    // Init the open list with the start position
+    NUOpenList openList;
+    openList.insert(State(StatePosition(0, 0), 0));
+    openList.insert(State(StatePosition(0, 2), 4));
+    // Create close list
+    CloseList closeList;
+
+    // Create neighbors finder with a 3x3 grid and no obstacle
+    NeighborsFinder neighbor(3, 3, {});
+
+    auto res = findGlobalShortestPath(
+      State(StatePosition(2, 2), 0), openList, closeList, neighbor);
+
+    EXPECT_TRUE(res);
+
+    EXPECT_EQ(closeList.container().size(), 9);
+    // 4 insert of state already in the list (1,1), (1,2), (2,1) and (0,2)
+    EXPECT_EQ(closeList.nrInsert(), 9 + 4);
+    EXPECT_EQ(openList.container().size(), 1);
+    EXPECT_EQ(openList.nrInsert(), 12 + 2); // 2 initial insert
 }

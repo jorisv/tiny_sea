@@ -21,6 +21,7 @@
 // tiny_sea
 #include <tiny_sea/core/boat_velocity_table.h>
 #include <tiny_sea/core/world_map.h>
+#include <tiny_sea/gsp/binary_heap_nu_open_list.h>
 #include <tiny_sea/gsp/binary_heap_open_list.h>
 #include <tiny_sea/gsp/close_list.h>
 #include <tiny_sea/gsp/global_shortest_path.h>
@@ -37,12 +38,13 @@ const double DEG_TO_RAD = PI / 180.;
 
 }
 
-/*! Create a word map with 7 time step and constant wind from north/east.
- * Simulate a sailing from Agde to a point between Agde and Sète.
+/*! Create a word map with 3 time step and constant wind from north/east.
+ * Simulate a sailing from Agde to Sète.
  * Agde: 0.75520397rad 0.06126106rad
- * Tartet: 0.75641780rad 0.06360946rad
+ * Sète: 0.75764743rad 0.06457718rad
  */
-class ShortestPathFullFixture : public ::testing::Test
+template<typename OpenListType>
+class OpenListBench : public ::testing::Test
 {
 protected:
     void SetUp() override
@@ -94,7 +96,7 @@ protected:
         m_start =
           NVector::fromLatLon(latitude_t(0.75520397), longitude_t(0.06126106));
         m_target =
-          NVector::fromLatLon(latitude_t(0.75641780), longitude_t(0.06360946));
+          NVector::fromLatLon(latitude_t(0.75764743), longitude_t(0.06457718));
 
         m_factory.reset(new StateFactory(std::chrono::minutes(10),
                                          meter_t(500.),
@@ -114,23 +116,29 @@ protected:
     std::unique_ptr<TimeWorldMap> m_timeWorldMap;
     std::unique_ptr<BoatVelocityTable> m_boatVelocityTable;
     std::unique_ptr<NeighborsFinder> m_neighborsFinder;
+    OpenListType m_openList;
 };
 
-TEST_F(ShortestPathFullFixture, TEST_find1)
+using OpenListTypes =
+  ::testing::Types<BinaryHeapNUOpenList, BinaryHeapOpenList>;
+TYPED_TEST_SUITE(OpenListBench, OpenListTypes);
+
+TYPED_TEST(OpenListBench, run)
 {
     CloseList closeList;
-    std::vector<State> start(
-      { m_factory->build(m_start, std::chrono::seconds(0)) });
-    BinaryHeapOpenList openList(start.begin(), start.end());
+    this->m_openList.insert(
+      this->m_factory->build(this->m_start, std::chrono::seconds(0)));
 
-    auto target = m_factory->build(m_target, std::chrono::seconds(0));
-    auto res =
-      findGlobalShortestPath(target, openList, closeList, *m_neighborsFinder);
+    auto target =
+      this->m_factory->build(this->m_target, std::chrono::seconds(0));
+    auto res = findGlobalShortestPath(
+      target, this->m_openList, closeList, *this->m_neighborsFinder);
 
     ASSERT_TRUE(res);
     auto state = res->state;
 
     // Test the result is in the same discret area
-    EXPECT_LT(state.position().distance(m_target),
+    EXPECT_LT(state.position().distance(this->m_target),
               meter_t(std::sqrt(2. * (500 * 500))));
 }
+

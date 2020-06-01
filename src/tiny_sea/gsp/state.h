@@ -109,6 +109,15 @@ private:
     std::optional<DiscretState> m_parentState;
 };
 
+/// State standard functor comparator
+struct StateComparator : std::less<State>
+{
+    bool operator()(const State& s1, const State& s2) const
+    {
+        return s1.better(s2);
+    }
+};
+
 }
 
 }
