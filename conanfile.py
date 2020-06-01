@@ -7,6 +7,11 @@ class TinySeaConan(ConanFile):
     author = "Joris Vaillant (joris.vaillant@gmail.com)"
     license = "GPL-3.0-only"
     url = "https://github.com/jorisv/tiny_sea"
+    scm = {
+        "type": "git",
+        "url": "auto",
+        "revision": "auto",
+    }
     description = (
         "TinySea provide functions to compute "
         "sailing boat routing based on multiple criteria"
@@ -25,19 +30,14 @@ class TinySeaConan(ConanFile):
     def configure(self):
         tools.check_min_cppstd(self, "17")
 
-    def requirements(self):
+    def build_requirements(self):
         if self.options.build_tests:
-            self.requires("gtest/[^1.10]")
+            self.build_requires("gtest/[^1.10]", force_host_context=True)
 
     def _configure_cmake(self):
         cmake = CMake(self)
         cmake.configure(defs={"TINY_SEA_BUILD_TESTS": self.options.build_tests})
         return cmake
-
-    def source(self):
-        git = tools.Git()
-        git.clone(self.url)
-        git.checkout("v%s" % self.version)
 
     def build(self):
         cmake = self._configure_cmake()
