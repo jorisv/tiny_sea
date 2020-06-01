@@ -3,7 +3,7 @@ from conans import ConanFile, tools, CMake
 
 class TinySeaConan(ConanFile):
     name = "tiny_sea"
-    version = "0.1.0"
+    version = "0.2.0"
     author = "Joris Vaillant (joris.vaillant@gmail.com)"
     license = "GPL-3.0-only"
     url = "https://github.com/jorisv/tiny_sea"
