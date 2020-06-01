@@ -178,13 +178,17 @@ public:
     {
         *it = state;
         m_heap.decrease(it.binaryHeapIndex());
+        ++m_nrUpdate;
     }
+
+    std::size_t nrUpdate() const { return m_nrUpdate; }
 
     const container_t& store() const { return m_store; }
 
 private:
     container_t m_store;
     binary_heap_t m_heap;
+    std::size_t m_nrUpdate = 0;
 };
 
 }
