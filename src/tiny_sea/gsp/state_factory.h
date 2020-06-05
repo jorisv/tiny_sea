@@ -33,13 +33,23 @@ namespace gsp {
 class StateFactory
 {
 public:
+    /*!
+     * \param discretTime Discretisation time.
+     * \param discretDistance Discretisation distance.
+     * \param startTime Time of the first configuration, use to compute the
+     * cost. \param earthRadius Earth radius, use to compute the heuristic.
+     * \param targetPas Target position, use to compute the heuristic.
+     * \param maxVelocity Maximum velocity, use to computeHeuristic.
+     */
     StateFactory(time_t discretTime,
                  meter_t discretDistance,
+                 time_t startTime,
                  meter_t earthRadius,
                  const NVector& targetPos,
                  velocity_t maxVelocity)
       : m_discretTime(discretTime)
       , m_discretDistance(discretDistance)
+      , m_startTime(startTime)
       , m_earthRadius(earthRadius)
       , m_targetPos(targetPos)
       , m_maxVelocity(maxVelocity)
@@ -47,11 +57,13 @@ public:
 
     StateFactory(std::chrono::seconds discretTime,
                  meter_t discretDistance,
+                 std::chrono::seconds startTime,
                  meter_t earthRadius,
                  const NVector& targetPos,
                  velocity_t maxVelocity)
       : m_discretTime(fromChrono(discretTime))
       , m_discretDistance(discretDistance)
+      , m_startTime(fromChrono(startTime))
       , m_earthRadius(earthRadius)
       , m_targetPos(targetPos)
       , m_maxVelocity(maxVelocity)
@@ -64,7 +76,7 @@ public:
         return State(position,
                      time,
                      buildDiscretState(position, time),
-                     cost_t(time.t),
+                     cost_t((time - m_startTime).t),
                      computeHeuristic(position),
                      std::make_optional(parentState));
     }
@@ -81,7 +93,7 @@ public:
         return State(position,
                      time,
                      buildDiscretState(position, time),
-                     cost_t(time.t),
+                     cost_t((time - m_startTime).t),
                      computeHeuristic(position),
                      std::nullopt);
     }
@@ -119,6 +131,7 @@ private:
 private:
     time_t m_discretTime;
     meter_t m_discretDistance;
+    time_t m_startTime;
     meter_t m_earthRadius;
     NVector m_targetPos;
     velocity_t m_maxVelocity;

@@ -38,6 +38,7 @@ protected:
     {
         m_factory.reset(new StateFactory(std::chrono::hours(1),
                                          meter_t(100.),
+                                         std::chrono::seconds(0),
                                          meter_t(1000.),
                                          NVector(1., 0., 0.),
                                          velocity_t(2.)));
