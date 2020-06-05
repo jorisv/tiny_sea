@@ -185,6 +185,9 @@ public:
 
     // Inspection part
 
+    Iterator begin() { return Iterator(m_store.begin()); }
+    Iterator end() { return Iterator(m_store.end()); }
+
     const State& at(const DiscretState& ds) const
     {
         return m_store.at(ds)->state;

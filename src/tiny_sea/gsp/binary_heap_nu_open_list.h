@@ -45,11 +45,33 @@ public:
         using iterator_category = std::input_iterator_tag;
         using value_type = State;
         using difference_type = int;
-        using pointer = State*;
-        using reference = State&;
+        using pointer = const State*;
+        using reference = const State&;
 
     public:
-        Iterator() = default;
+        Iterator(pointer ptr)
+          : m_ptr(ptr)
+        {}
+
+        reference operator*() { return *m_ptr; }
+        pointer operator->() { return m_ptr; }
+        Iterator& operator++()
+        {
+            ++m_ptr;
+            return *this;
+        }
+
+        Iterator operator++(int)
+        {
+            Iterator tmp(*this);
+            ++m_ptr;
+            return tmp;
+        }
+        bool operator==(const Iterator& o) const { return m_ptr == o.m_ptr; }
+        bool operator!=(const Iterator& o) const { return m_ptr != o.m_ptr; }
+
+    public:
+        pointer m_ptr;
     };
 
     using iterator = Iterator;
@@ -84,10 +106,13 @@ public:
     std::pair<iterator, bool> insert(const State& state)
     {
         m_store.push(state);
-        return std::make_pair(iterator(), true);
+        return std::make_pair(iterator(nullptr), true);
     }
 
     // Inspection part
+
+    Iterator begin() const { return Iterator(&(m_store.container().front())); }
+    Iterator end() const { return Iterator(&(m_store.container().back()) + 1); }
 
     std::size_t size() const { return m_store.size(); }
 
