@@ -34,6 +34,7 @@ protected:
     {
         m_factory.reset(new StateFactory(std::chrono::minutes(30),
                                          meter_t(10.),
+                                         std::chrono::seconds(10),
                                          meter_t(1000.),
                                          NVector(1., 0., 0.),
                                          velocity_t(2.)));
@@ -51,6 +52,7 @@ TEST_F(StateFactoryFixture, TEST_build1)
     auto res = m_factory->build(pos, time);
     EXPECT_EQ(res.position(), pos);
     EXPECT_EQ(res.seconds(), time);
+    EXPECT_NEAR(res.g().t, fromChrono(time).t - 10., 1e-8);
     EXPECT_EQ(res.discretState(), DiscretState(0, 44, 89, 0));
 }
 
@@ -65,7 +67,7 @@ TEST_F(StateFactoryFixture, TEST_build2)
     EXPECT_EQ(res.position(), pos);
     EXPECT_EQ(res.seconds(), time);
     EXPECT_EQ(res.discretState(), DiscretState(1, -19, 91, -37));
-    EXPECT_EQ(res.g(), cost_t(fromChrono(time).t));
+    EXPECT_NEAR(res.g().t, fromChrono(time).t - 10., 1e-8);
     EXPECT_NEAR(
       res.h().t, cost_t(pos.distance(NVector(1., 0., 0.)).t / 2.).t, 1e-8);
     EXPECT_EQ(res.f(), res.g() + res.h());

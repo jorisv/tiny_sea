@@ -100,6 +100,7 @@ protected:
 
         m_factory.reset(new StateFactory(std::chrono::minutes(10),
                                          meter_t(500.),
+                                         std::chrono::seconds(0),
                                          meter_t(EARTH_RADIUS),
                                          m_target,
                                          m_boatVelocityTable->maxVelocity()));
