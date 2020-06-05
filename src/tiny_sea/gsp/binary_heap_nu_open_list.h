@@ -70,6 +70,8 @@ public:
         }
     }
 
+    // findGlobalShortestPath part
+
     bool empty() const { return m_store.empty(); }
 
     State pop()
@@ -84,6 +86,10 @@ public:
         m_store.push(state);
         return std::make_pair(iterator(), true);
     }
+
+    // Inspection part
+
+    std::size_t size() const { return m_store.size(); }
 
     const container_t& store() const { return m_store; }
 

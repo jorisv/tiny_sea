@@ -90,6 +90,8 @@ public:
         }
     }
 
+    // findGlobalShortestPath part
+
     bool contains(const State& state) const
     {
         return m_store.find(state.discretState()) != m_store.end();
@@ -100,6 +102,12 @@ public:
         auto res = m_store.emplace(state.discretState(), state);
         return std::make_pair(iterator(res.first), res.second);
     }
+
+    // Inspection part
+
+    const State& at(const DiscretState& ds) const { return m_store.at(ds); }
+
+    std::size_t size() const { return m_store.size(); }
 
     const container_t store() const { return m_store; }
 

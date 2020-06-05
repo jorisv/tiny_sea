@@ -153,6 +153,8 @@ public:
         }
     }
 
+    // findGlobalShortestPath part
+
     bool empty() const { return m_store.empty(); }
 
     State pop()
@@ -180,6 +182,15 @@ public:
         m_heap.decrease(it.binaryHeapIndex());
         ++m_nrUpdate;
     }
+
+    // Inspection part
+
+    const State& at(const DiscretState& ds) const
+    {
+        return m_store.at(ds)->state;
+    }
+
+    std::size_t size() const { return m_store.size(); }
 
     std::size_t nrUpdate() const { return m_nrUpdate; }
 
