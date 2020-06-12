@@ -35,6 +35,7 @@ struct VelocityTag;
 struct RadianTag;
 struct CostTag;
 struct TimeTag;
+struct IndexTag;
 
 using scale_t = StrongTypedef<ScaleTag>;
 using latitude_t = StrongTypedef<LatitudeTag>;
@@ -44,6 +45,7 @@ using velocity_t = StrongTypedef<VelocityTag>;
 using radian_t = StrongTypedef<RadianTag>;
 using cost_t = StrongTypedef<CostTag>;
 using time_t = StrongTypedef<TimeTag>;
+using index_t = StrongTypedef<IndexTag>;
 
 struct ScaleTag
 {
@@ -128,6 +130,15 @@ struct TimeTag
     using multiplication = ListT<OperationType<scale_t, time_t>>;
     using division =
       ListT<OperationType<time_t, scale_t>, OperationType<scale_t, time_t>>;
+};
+
+struct IndexTag
+{
+    using value_type = std::size_t;
+    using plus = ListT<OperationType<index_t>>;
+    using minus = ListT<OperationType<index_t>>;
+    using multiplication = ListT<>;
+    using division = ListT<>;
 };
 
 template<class Rep, class Period = std::ratio<1>>

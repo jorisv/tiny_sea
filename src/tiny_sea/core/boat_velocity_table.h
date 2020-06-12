@@ -64,6 +64,8 @@ public:
         return m_boatVelocities;
     }
 
+    std::size_t size() const noexcept { return m_boatVelocities.size(); }
+
     velocity_t maxVelocity() const noexcept { return m_boatMaxVelocity; }
 
 private:
