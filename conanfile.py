@@ -18,9 +18,14 @@ class TinySeaConan(ConanFile):
     )
     settings = "os", "compiler", "build_type", "arch"
     requires = ("eigen/[^3.3]",)
-    options = {"shared": [True, False], "build_tests": [True, False]}
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "build_tests": [True, False],
+    }
     default_options = {
         "shared": False,
+        "fPIC": True,
         "build_tests": True,
         "gtest:shared": True,
         "gtest:build_gmock": False,
