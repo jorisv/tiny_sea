@@ -58,6 +58,11 @@ public:
         return m_table(fromWind, toWind);
     }
 
+    time_t safePenalty(std::size_t fromWind, std::size_t toWind) const
+    {
+        return m_table.safeAt(fromWind, toWind);
+    }
+
 private:
     table_t m_table;
 };
@@ -88,11 +93,12 @@ public:
         assert(y != m_setSize);
         return m_tableBuilder(x, y);
     }
-    value_type& operator()(std::size_t x, std::size_t y)
+    void setSymetric(std::size_t x, std::size_t y, value_type v)
     {
         assert(x != m_setSize);
         assert(y != m_setSize);
-        return m_tableBuilder(x, y);
+        m_tableBuilder(x, y) = v;
+        m_tableBuilder(y, x) = v;
     }
 
     value_type safeAt(std::size_t x, std::size_t y) const
@@ -100,11 +106,14 @@ public:
         checkIndex(x, y);
         return m_tableBuilder.safeAt(x, y);
     }
-    value_type& safeAt(std::size_t x, std::size_t y)
+    void safeSetSymetric(std::size_t x, std::size_t y, value_type v)
     {
         checkIndex(x, y);
-        return m_tableBuilder.safeAt(x, y);
+        m_tableBuilder.safeAt(x, y) = v;
+        m_tableBuilder.safeAt(y, x) = v;
     }
+
+    PenaltyTable build() const { return PenaltyTable(m_tableBuilder.build()); }
 
 private:
     void checkIndex(std::size_t x, std::size_t y) const
